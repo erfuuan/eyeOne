@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"eyeOne/internal/config"
+	"eyeOne/config"
 	"eyeOne/internal/exchange"
 	"eyeOne/internal/handler"
 	"eyeOne/internal/service"
@@ -24,27 +24,28 @@ func main() {
 	router := gin.Default()
 
 	server := &http.Server{
-		Addr:           ":3000",
+		Addr:           ":" + cfg.Port,
 		Handler:        router,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	binanceExchange := exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey)
-	// kucoinExchange := exchange.NewKuCoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
+	exchanges := map[exchange.ExchangeType]exchange.Exchange{
+		exchange.Binance: exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey),
+		// exchange.KuCoin:  exchange.NewKuCoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase),
+	}
 
-	// tradingService := service.NewTradingService(binanceExchange, kucoinExchange)
-	tradingService := service.NewTradingService(binanceExchange)
+	tradingService := service.NewTradingService(exchanges)
 
 	h := handler.NewHandler(tradingService)
 
 	api := router.Group("/api/v1")
 	{
-		api.POST("/order", h.CreateOrder)
-		api.DELETE("/order-book/:id", h.CancelOrder)
-		api.GET("/balance/:asset", h.GetBalance)
-		api.GET("/order-book/:symbol", h.GetOrderBook)
+		api.POST("/order/:exchange", h.CreateOrder)
+		api.DELETE("/order/:exchange/:orderID", h.CancelOrder)
+		api.GET("/balance/:exchange/:asset", h.GetBalance)
+		api.GET("/order-book/:exchange/:symbol", h.GetOrderBook)
 	}
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

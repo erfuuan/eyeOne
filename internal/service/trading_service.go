@@ -2,36 +2,61 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"eyeOne/internal/exchange"
 )
 
-// TradingService implements the exchange.Exchange interface.
 type TradingService struct {
-	exchange exchange.Exchange
+	exchanges map[exchange.ExchangeType]exchange.Exchange
 }
 
-// NewTradingService creates a new instance of TradingService.
-func NewTradingService(ex exchange.Exchange) *TradingService {
-	return &TradingService{exchange: ex}
+// NewTradingService creates a new instance of TradingService with support for multiple exchanges.
+func NewTradingService(exchanges map[exchange.ExchangeType]exchange.Exchange) *TradingService {
+	return &TradingService{exchanges: exchanges}
 }
 
-// CreateOrder delegates the order creation to the underlying exchange.
-func (ts *TradingService) CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error) {
-	return ts.exchange.CreateOrder(ctx, symbol, side, orderType, quantity, price)
+// getExchange returns the exchange instance by name.
+func (ts *TradingService) getExchange(exType exchange.ExchangeType) (exchange.Exchange, error) {
+	ex, ok := ts.exchanges[exType]
+	if !ok {
+		return nil, fmt.Errorf("exchange %s not found", exType)
+	}
+	return ex, nil
 }
 
-// CancelOrder delegates the order cancellation to the underlying exchange.
-func (ts *TradingService) CancelOrder(ctx context.Context, symbol, orderID string) error {
-	return ts.exchange.CancelOrder(ctx, symbol, orderID)
+// CreateOrder places an order on the specified exchange.
+func (ts *TradingService) CreateOrder(ctx context.Context, exType exchange.ExchangeType, symbol, side, orderType string, quantity, price float64) (string, error) {
+	ex, err := ts.getExchange(exType)
+	if err != nil {
+		return "", err
+	}
+	return ex.CreateOrder(ctx, symbol, side, orderType, quantity, price)
 }
 
-// GetBalance retrieves the balance for a specific asset from the underlying exchange.
-func (ts *TradingService) GetBalance(ctx context.Context, asset string) (float64, error) {
-	return ts.exchange.GetBalance(ctx, asset)
+// CancelOrder cancels an order on the specified exchange.
+func (ts *TradingService) CancelOrder(ctx context.Context, exType exchange.ExchangeType, symbol, orderID string) error {
+	ex, err := ts.getExchange(exType)
+	if err != nil {
+		return err
+	}
+	return ex.CancelOrder(ctx, symbol, orderID)
 }
 
-// GetOrderBook retrieves the order book for a specific symbol from the underlying exchange.
-func (ts *TradingService) GetOrderBook(ctx context.Context, symbol string) (exchange.OrderBook, error) {
-	return ts.exchange.GetOrderBook(ctx, symbol)
+// GetBalance retrieves balance for a specific asset from the specified exchange.
+func (ts *TradingService) GetBalance(ctx context.Context, exType exchange.ExchangeType, asset string) (float64, error) {
+	ex, err := ts.getExchange(exType)
+	if err != nil {
+		return 0, err
+	}
+	return ex.GetBalance(ctx, asset)
+}
+
+// GetOrderBook retrieves the order book for a specific symbol from the specified exchange.
+func (ts *TradingService) GetOrderBook(ctx context.Context, exType exchange.ExchangeType, symbol string) (exchange.OrderBook, error) {
+	ex, err := ts.getExchange(exType)
+	if err != nil {
+		return exchange.OrderBook{}, err
+	}
+	return ex.GetOrderBook(ctx, symbol)
 }

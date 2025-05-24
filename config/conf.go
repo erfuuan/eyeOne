@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Port             string
 	BinanceAPIKey    string
 	BinanceSecretKey string
 	KucoinAPIKey     string
@@ -22,6 +23,7 @@ func LoadEnv() *Config {
 	}
 
 	cfg := &Config{
+		Port:             os.Getenv("PORT"),
 		BinanceAPIKey:    os.Getenv("BINANCE_API_KEY"),
 		BinanceSecretKey: os.Getenv("BINANCE_SECRET_KEY"),
 		KucoinAPIKey:     os.Getenv("KUCOIN_API_KEY"),

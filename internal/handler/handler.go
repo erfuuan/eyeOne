@@ -6,20 +6,34 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"eyeOne/internal/exchange"
+	"eyeOne/internal/service"
 )
 
-// Handler struct holds the exchange implementation.
+// Handler struct holds the trading service.
 type Handler struct {
-	exchange exchange.Exchange
+	service *service.TradingService
 }
 
-// NewHandler creates a new Handler instance with the provided exchange.
-func NewHandler(ex exchange.Exchange) *Handler {
-	return &Handler{exchange: ex}
+// NewHandler creates a new Handler instance.
+func NewHandler(s *service.TradingService) *Handler {
+	return &Handler{service: s}
 }
 
-// CreateOrder handles the creation of a new order.
+func (h *Handler) parseExchange(c *gin.Context) (exchange.ExchangeType, bool) {
+	exName := exchange.ExchangeType(c.Param("exchange"))
+	if exName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing exchange parameter"})
+		return "", false
+	}
+	return exName, true
+}
+
 func (h *Handler) CreateOrder(c *gin.Context) {
+	exName, ok := h.parseExchange(c)
+	if !ok {
+		return
+	}
+
 	var req struct {
 		Symbol    string  `json:"symbol"`
 		Side      string  `json:"side"`
@@ -33,7 +47,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	orderID, err := h.exchange.CreateOrder(c.Request.Context(), req.Symbol, req.Side, req.OrderType, req.Quantity, req.Price)
+	orderID, err := h.service.CreateOrder(c.Request.Context(), exName, req.Symbol, req.Side, req.OrderType, req.Quantity, req.Price)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -42,17 +56,20 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"order_id": orderID})
 }
 
-// CancelOrder handles the cancellation of an existing order.
 func (h *Handler) CancelOrder(c *gin.Context) {
-	symbol := c.Query("symbol")
-	orderID := c.Query("order_id")
-
-	if symbol == "" || orderID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing symbol or order_id"})
+	exName, ok := h.parseExchange(c)
+	if !ok {
 		return
 	}
 
-	err := h.exchange.CancelOrder(c.Request.Context(), symbol, orderID)
+	symbol := c.Query("symbol")
+	orderID := c.Param("orderID")
+	if orderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing orderID parameter"})
+		return
+	}
+
+	err := h.service.CancelOrder(c.Request.Context(), exName, symbol, orderID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -61,15 +78,19 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "order canceled"})
 }
 
-// GetBalance retrieves the balance for a specific asset.
 func (h *Handler) GetBalance(c *gin.Context) {
-	asset := c.Query("asset")
-	if asset == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing asset parameter"})
+	exName, ok := h.parseExchange(c)
+	if !ok {
 		return
 	}
 
-	balance, err := h.exchange.GetBalance(c.Request.Context(), asset)
+	asset := c.Param("asset")
+	if asset == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing asset parameter"})
+		return
+	}
+
+	balance, err := h.service.GetBalance(c.Request.Context(), exName, asset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -78,15 +99,19 @@ func (h *Handler) GetBalance(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"asset": asset, "balance": balance})
 }
 
-// GetOrderBook retrieves the order book for a specific symbol.
 func (h *Handler) GetOrderBook(c *gin.Context) {
-	symbol := c.Query("symbol")
-	if symbol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing symbol parameter"})
+	exName, ok := h.parseExchange(c)
+	if !ok {
 		return
 	}
 
-	orderBook, err := h.exchange.GetOrderBook(c.Request.Context(), symbol)
+	symbol := c.Param("symbol")
+	if symbol == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing symbol parameter"})
+		return
+	}
+
+	orderBook, err := h.service.GetOrderBook(c.Request.Context(), exName, symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
