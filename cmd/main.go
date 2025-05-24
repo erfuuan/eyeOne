@@ -24,7 +24,7 @@ func main() {
 	router := gin.Default()
 
 	server := &http.Server{
-		Addr:           ":8080",
+		Addr:           ":3000",
 		Handler:        router,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -32,18 +32,19 @@ func main() {
 	}
 
 	binanceExchange := exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey)
-	kucoinExchange := exchange.NewKuCoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
+	// kucoinExchange := exchange.NewKuCoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
 
-	tradingService := service.NewTradingService(binanceExchange, kucoinExchange)
+	// tradingService := service.NewTradingService(binanceExchange, kucoinExchange)
+	tradingService := service.NewTradingService(binanceExchange)
 
 	h := handler.NewHandler(tradingService)
 
-	api := router.Group("/api")
+	api := router.Group("/api/v1")
 	{
 		api.POST("/order", h.CreateOrder)
-		api.DELETE("/order/:id", h.CancelOrder)
+		api.DELETE("/order-book/:id", h.CancelOrder)
 		api.GET("/balance/:asset", h.GetBalance)
-		api.GET("/orderbook/:symbol", h.GetOrderBook)
+		api.GET("/order-book/:symbol", h.GetOrderBook)
 	}
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
