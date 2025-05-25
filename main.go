@@ -31,10 +31,28 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 	}
 
+	
+
+	exchanges := make(map[exchange.ExchangeType]exchange.Exchange)
+
+	// Initialize Binance exchange
+	binance, err := exchange.NewBinanceExchange("apiKey", "secretKey")
+	if err != nil {
+		log.Fatalf("Error initializing Binance: %v", err)
+	}
+	exchanges[exchange.Binance] = binance
+
+	// Initialize KuCoin exchange
+	kucoin, err := exchange.NewKucoinExchange("apiKey", "secretKey", "passphrase")
+	if err != nil {
+		log.Fatalf("Error initializing KuCoin: %v", err)
+	}
+
 	exchanges := map[exchange.ExchangeType]exchange.Exchange{
 		exchange.Binance: exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey),
-		// exchange.KuCoin:  exchange.NewKuCoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase),
+		exchange.KuCoin:  exchange.NewKucoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
 	}
+
 
 	tradingService := service.NewTradingService(exchanges)
 
