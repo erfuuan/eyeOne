@@ -14,9 +14,9 @@ type BinanceExchange struct {
 }
 
 // NewBinanceExchange creates a new instance of BinanceExchange.
-func NewBinanceExchange(apiKey, secretKey string) Exchange {
+func NewBinanceExchange(apiKey, secretKey string) (Exchange, error) {
 	client := binance.NewClient(apiKey, secretKey)
-	return &BinanceExchange{client: client}
+	return &BinanceExchange{client: client}, nil
 }
 
 // CreateOrder places a new order on Binance.
