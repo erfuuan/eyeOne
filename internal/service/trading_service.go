@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"eyeOne/internal/exchange"
-	"eyeOne/internal/models"
+	"eyeOne/models"
 )
 
 type TradingService struct {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Kucoin/kucoin-go-sdk"
 
-	"eyeOne/internal/models"
+	"eyeOne/models"
 )
 
 type KucoinExchange struct {

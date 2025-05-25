@@ -7,7 +7,7 @@ import (
 
 	"github.com/adshao/go-binance/v2"
 
-	"eyeOne/internal/models"
+	"eyeOne/models"
 )
 
 type BinanceExchange struct {

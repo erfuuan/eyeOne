@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"eyeOne/internal/models"
+	"eyeOne/models"
 )
 
 type Exchange interface {
