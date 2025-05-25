@@ -5,18 +5,17 @@ import (
 	"fmt"
 
 	"eyeOne/internal/exchange"
+	"eyeOne/internal/models"
 )
 
 type TradingService struct {
 	exchanges map[exchange.ExchangeType]exchange.Exchange
 }
 
-// NewTradingService creates a new instance of TradingService with support for multiple exchanges.
 func NewTradingService(exchanges map[exchange.ExchangeType]exchange.Exchange) *TradingService {
 	return &TradingService{exchanges: exchanges}
 }
 
-// getExchange returns the exchange instance by name.
 func (ts *TradingService) getExchange(exType exchange.ExchangeType) (exchange.Exchange, error) {
 	ex, ok := ts.exchanges[exType]
 	if !ok {
@@ -25,7 +24,6 @@ func (ts *TradingService) getExchange(exType exchange.ExchangeType) (exchange.Ex
 	return ex, nil
 }
 
-// CreateOrder places an order on the specified exchange.
 func (ts *TradingService) CreateOrder(ctx context.Context, exType exchange.ExchangeType, symbol, side, orderType string, quantity, price float64) (string, error) {
 	ex, err := ts.getExchange(exType)
 	if err != nil {
@@ -34,7 +32,6 @@ func (ts *TradingService) CreateOrder(ctx context.Context, exType exchange.Excha
 	return ex.CreateOrder(ctx, symbol, side, orderType, quantity, price)
 }
 
-// CancelOrder cancels an order on the specified exchange.
 func (ts *TradingService) CancelOrder(ctx context.Context, exType exchange.ExchangeType, symbol, orderID string) error {
 	ex, err := ts.getExchange(exType)
 	if err != nil {
@@ -43,7 +40,6 @@ func (ts *TradingService) CancelOrder(ctx context.Context, exType exchange.Excha
 	return ex.CancelOrder(ctx, symbol, orderID)
 }
 
-// GetBalance retrieves balance for a specific asset from the specified exchange.
 func (ts *TradingService) GetBalance(ctx context.Context, exType exchange.ExchangeType, asset string) (float64, error) {
 	ex, err := ts.getExchange(exType)
 	if err != nil {
@@ -52,11 +48,10 @@ func (ts *TradingService) GetBalance(ctx context.Context, exType exchange.Exchan
 	return ex.GetBalance(ctx, asset)
 }
 
-// GetOrderBook retrieves the order book for a specific symbol from the specified exchange.
-func (ts *TradingService) GetOrderBook(ctx context.Context, exType exchange.ExchangeType, symbol string) (exchange.OrderBook, error) {
+func (ts *TradingService) GetOrderBook(ctx context.Context, exType exchange.ExchangeType, symbol string) (models.OrderBook, error) {
 	ex, err := ts.getExchange(exType)
 	if err != nil {
-		return exchange.OrderBook{}, err
+		return models.OrderBook{}, err
 	}
 	return ex.GetOrderBook(ctx, symbol)
 }

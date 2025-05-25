@@ -9,12 +9,10 @@ import (
 	"eyeOne/internal/service"
 )
 
-// Handler struct holds the trading service.
 type Handler struct {
 	service *service.TradingService
 }
 
-// NewHandler creates a new Handler instance.
 func NewHandler(s *service.TradingService) *Handler {
 	return &Handler{service: s}
 }
