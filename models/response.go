@@ -1,14 +1,14 @@
 package models
 
 type SuccessResponse struct {
-	Status    string `json:"status"` // always "success"
+	Status    string `json:"status"`
 	Data      any    `json:"data,omitempty"`
 	Message   string `json:"message,omitempty"`
 	Timestamp int64  `json:"timestamp"`
 }
 
 type ErrorResponse struct {
-	Status    string       `json:"status"` // always "error"
+	Status    string       `json:"status"`
 	Error     ErrorPayload `json:"error"`
 	Timestamp int64        `json:"timestamp"`
 }

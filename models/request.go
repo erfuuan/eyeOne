@@ -33,5 +33,5 @@ type GetBalanceRequest struct {
 
 type GetOrderBookRequest struct {
 	Symbol string `json:"symbol" binding:"required"`
-	Limit  int    `json:"limit" binding:"omitempty"` // optional
+	Limit  int    `json:"limit" binding:"omitempty"`
 }
