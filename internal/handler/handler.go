@@ -1,12 +1,16 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"eyeOne/internal/exchange"
 	"eyeOne/internal/service"
+	"eyeOne/models"
 )
 
 type Handler struct {
@@ -17,48 +21,53 @@ func NewHandler(s *service.TradingService) *Handler {
 	return &Handler{service: s}
 }
 
-func (h *Handler) parseExchange(c *gin.Context) (exchange.ExchangeType, bool) {
-	exName := exchange.ExchangeType(c.Param("exchange"))
-	if exName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing exchange parameter"})
-		return "", false
-	}
-	return exName, true
-}
-
 func (h *Handler) CreateOrder(c *gin.Context) {
-	exName, ok := h.parseExchange(c)
-	if !ok {
-		return
-	}
 
-	var req struct {
-		Symbol    string  `json:"symbol"`
-		Side      string  `json:"side"`
-		OrderType string  `json:"order_type"`
-		Quantity  float64 `json:"quantity"`
-		Price     float64 `json:"price"`
-	}
+	var req models.CreateOrderRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
 	}
 
-	orderID, err := h.service.CreateOrder(c.Request.Context(), exName, req.Symbol, req.Side, req.OrderType, req.Quantity, req.Price)
+	exchangeName, _ := c.Get("exchange")
+	exNameStr := exchangeName.(string)
+	exName := exchange.ExchangeType(exNameStr)
+
+	// 3. Process order
+	orderID, err := h.service.CreateOrder(
+		c.Request.Context(),
+		exName,
+		strings.ToUpper(req.Symbol),
+		strings.ToLower(req.Side),
+		req.OrderType,
+		req.Quantity,
+		req.Price,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		fmt.Println(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"order_id": orderID})
+	// 4. Return success response
+	c.JSON(http.StatusCreated, gin.H{
+		"status":    "success",
+		"orderId":   orderID,
+		"exchange":  exName,
+		"symbol":    strings.ToUpper(req.Symbol),
+		"side":      strings.ToLower(req.Side),
+		"type":      req.OrderType,
+		"quantity":  req.Quantity,
+		"price":     req.Price,
+		"timestamp": time.Now().Unix(),
+	})
 }
 
 func (h *Handler) CancelOrder(c *gin.Context) {
-	exName, ok := h.parseExchange(c)
-	if !ok {
-		return
-	}
+
+	exchangeName, _ := c.Get("exchange")
+	exNameStr := exchangeName.(string)
+	exName := exchange.ExchangeType(exNameStr)
 
 	symbol := c.Query("symbol")
 	orderID := c.Param("orderID")
@@ -77,10 +86,10 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 }
 
 func (h *Handler) GetBalance(c *gin.Context) {
-	exName, ok := h.parseExchange(c)
-	if !ok {
-		return
-	}
+
+	exchangeName, _ := c.Get("exchange")
+	exNameStr := exchangeName.(string)
+	exName := exchange.ExchangeType(exNameStr)
 
 	asset := c.Param("asset")
 	if asset == "" {
@@ -98,10 +107,6 @@ func (h *Handler) GetBalance(c *gin.Context) {
 }
 
 func (h *Handler) GetOrderBook(c *gin.Context) {
-	exName, ok := h.parseExchange(c)
-	if !ok {
-		return
-	}
 
 	symbol := c.Param("symbol")
 	if symbol == "" {
@@ -109,7 +114,7 @@ func (h *Handler) GetOrderBook(c *gin.Context) {
 		return
 	}
 
-	orderBook, err := h.service.GetOrderBook(c.Request.Context(), exName, symbol)
+	orderBook, err := h.service.GetOrderBook(c.Request.Context(), "binanace", symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
