@@ -53,19 +53,9 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	type OrderData struct {
-		OrderID  string  `json:"orderId"`
-		Exchange string  `json:"exchange"`
-		Symbol   string  `json:"symbol"`
-		Side     string  `json:"side"`
-		Type     string  `json:"type"`
-		Quantity float64 `json:"quantity"`
-		Price    float64 `json:"price"`
-	}
-
 	c.JSON(http.StatusCreated, models.SuccessResponse{
 		StatusCode: http.StatusCreated,
-		Data: OrderData{
+		Data: models.OrderDataResponse{
 			OrderID:  orderID,
 			Exchange: exNameStr,
 			Symbol:   strings.ToUpper(req.Symbol),
@@ -95,10 +85,10 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	if ok, errMsg := models.ValidateSymbol(symbol); !ok {
+	if err := models.ValidateSymbol(symbol); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorPayload{
 			StatusCode: http.StatusBadRequest,
-			Message:    errMsg,
+			Message:    err.Error(),
 			Timestamp:  time.Now().Unix(),
 		})
 		return
@@ -127,10 +117,10 @@ func (h *Handler) GetBalance(c *gin.Context) {
 	exName := exchange.ExchangeType(exNameStr)
 	asset := c.Param("asset")
 
-	if ok, errMsg := models.ValidateAsset(asset); !ok {
+	if err := models.ValidateAsset(asset); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorPayload{
 			StatusCode: http.StatusBadRequest,
-			Message:    errMsg,
+			Message:    err.Error(),
 			Timestamp:  time.Now().Unix(),
 		})
 		return
@@ -146,13 +136,9 @@ func (h *Handler) GetBalance(c *gin.Context) {
 		return
 	}
 
-	type BalanceData struct {
-		Asset   string  `json:"asset"`
-		Balance float64 `json:"balance"`
-	}
 	c.JSON(http.StatusOK, models.SuccessResponse{
 		StatusCode: http.StatusOK,
-		Data: BalanceData{
+		Data: models.BalanceDataResponse{
 			Asset:   asset,
 			Balance: balance,
 		},
@@ -168,10 +154,11 @@ func (h *Handler) GetOrderBook(c *gin.Context) {
 	exName := exchange.ExchangeType(exNameStr)
 
 	symbol := c.Param("symbol")
-	if ok, errMsg := models.ValidateSymbol(symbol); !ok {
+	// if ok, errMsg := models.ValidateSymbol(symbol); !ok {
+	if err := models.ValidateSymbol(symbol); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorPayload{
 			StatusCode: http.StatusBadRequest,
-			Message:    errMsg,
+			Message:    err.Error(),
 			Timestamp:  time.Now().Unix(),
 		})
 		return

@@ -1,19 +1,21 @@
 package models
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
+
+	"go.uber.org/zap"
+
+	"eyeOne/pkg/logger"
 )
 
-type CreateOrderRequest struct {
-	// Symbol    string  `json:"symbol" validate:"required,alphanum,min=6,max=10"`
-	// Side      string  `json:"side" validate:"required,oneof=buy sell"`
-	// Quantity  float64 `json:"quantity" validate:"required,gt=0"`
-	// Price     float64 `json:"price" validate:"required_if=Side buy,gt=0"`
-	// OrderType string  `json:"orderType" binding:"required,oneof=limit market"`
+// ========== Order Requests ==========
 
-	Symbol    string  `json:"symbol" binding:"required"`
-	Side      string  `json:"side" binding:"required"`
-	OrderType string  `json:"orderType" binding:"required"`
+type CreateOrderRequest struct {
+	Symbol    string  `json:"symbol" binding:"required"`    // e.g. BTCUSDT
+	Side      string  `json:"side" binding:"required"`      // buy / sell
+	OrderType string  `json:"orderType" binding:"required"` // market / limit
 	Quantity  float64 `json:"quantity" binding:"required"`
 	Price     float64 `json:"price" binding:"required"`
 }
@@ -32,26 +34,41 @@ type GetOrderBookRequest struct {
 	Limit  int    `json:"limit" binding:"omitempty"`
 }
 
-var ValidSymbolRegex = regexp.MustCompile(`^[A-Z0-9]{6,20}$`)
+// ========== Validation ==========
 
-func ValidateSymbol(symbol string) (bool, string) {
+var (
+	validSymbolRegex = regexp.MustCompile(`^[A-Z0-9]{6,20}$`)
+	validAssetRegex  = regexp.MustCompile(`^[A-Z0-9]{2,10}$`)
+)
+
+func ValidateSymbol(symbol string) error {
+	log := logger.GetLogger()
+
 	if symbol == "" {
-		return false, "symbol is required"
+		err := errors.New("symbol is required")
+		log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err))
+		return err
 	}
-	if !ValidSymbolRegex.MatchString(symbol) {
-		return false, "symbol must be uppercase letters or digits, 6 to 20 characters"
+	if !validSymbolRegex.MatchString(symbol) {
+		err := fmt.Errorf("symbol must be uppercase letters or digits, 6 to 20 characters (got: %s)", symbol)
+		log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err))
+		return err
 	}
-	return true, ""
+	return nil
 }
 
-var validAssetRegex = regexp.MustCompile(`^[A-Z0-9]{2,10}$`)
+func ValidateAsset(asset string) error {
+	log := logger.GetLogger()
 
-func ValidateAsset(asset string) (bool, string) {
 	if asset == "" {
-		return false, "asset is required"
+		err := errors.New("asset is required")
+		log.Warn("Validation error", zap.String("field", "asset"), zap.Error(err))
+		return err
 	}
 	if !validAssetRegex.MatchString(asset) {
-		return false, "asset must be uppercase letters or digits, 2 to 10 characters"
+		err := fmt.Errorf("asset must be uppercase letters or digits, 2 to 10 characters (got: %s)", asset)
+		log.Warn("Validation error", zap.String("field", "asset"), zap.Error(err))
+		return err
 	}
-	return true, ""
+	return nil
 }

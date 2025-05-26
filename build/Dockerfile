@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
@@ -20,9 +20,8 @@ WORKDIR /root/
 
 COPY --from=builder /app/bin/eyeOne .
 
-# Copy .env file if you want to provide config via file
-# COPY .env .
+COPY .env .
 
-EXPOSE 8080
+EXPOSE 3000
 
 CMD ["./eyeOne"]
