@@ -17,7 +17,6 @@ type KucoinExchange struct {
 }
 
 func NewKucoinExchange(apiKey, apiSecret, apiPassphrase string) (*KucoinExchange, error) {
-
 	client := kucoin.NewApiService(
 		kucoin.ApiKeyOption(apiKey),
 		kucoin.ApiSecretOption(apiSecret),

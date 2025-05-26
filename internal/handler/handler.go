@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -46,7 +45,11 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		req.Price,
 	)
 	if err != nil {
-		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
 
@@ -59,6 +62,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		Quantity float64 `json:"quantity"`
 		Price    float64 `json:"price"`
 	}
+
 	c.JSON(http.StatusCreated, models.SuccessResponse{
 		StatusCode: http.StatusCreated,
 		Data: OrderData{
@@ -102,10 +106,19 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 
 	err := h.service.CancelOrder(c.Request.Context(), exName, symbol, orderID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "order canceled"})
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		StatusCode: http.StatusOK,
+		Message:    "order canceled",
+		Timestamp:  time.Now().Unix(),
+	})
 }
 
 func (h *Handler) GetBalance(c *gin.Context) {
@@ -125,7 +138,11 @@ func (h *Handler) GetBalance(c *gin.Context) {
 
 	balance, err := h.service.GetBalance(c.Request.Context(), exName, asset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
 
@@ -162,7 +179,11 @@ func (h *Handler) GetOrderBook(c *gin.Context) {
 
 	orderBook, err := h.service.GetOrderBook(c.Request.Context(), exName, symbol)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
 
