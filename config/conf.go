@@ -5,6 +5,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
+
+	"eyeOne/pkg/logger"
 )
 
 type Config struct {
@@ -17,7 +19,7 @@ type Config struct {
 }
 
 func LoadEnv() *Config {
-	logger, _ := zap.NewProduction()
+	logger := logger.GetLogger()
 
 	// Try loading .env file if it exists (only for local/dev use)
 	if err := godotenv.Load(); err != nil {

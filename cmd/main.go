@@ -17,10 +17,12 @@ import (
 	"eyeOne/internal/exchange"
 	"eyeOne/internal/handler"
 	"eyeOne/internal/service"
+	"eyeOne/pkg/logger"
 )
 
 func main() {
-	logger, _ := zap.NewProduction()
+	logger := logger.GetLogger()
+
 	defer logger.Sync()
 
 	if err := godotenv.Load(); err != nil {
