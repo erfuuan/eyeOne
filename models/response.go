@@ -1,21 +1,28 @@
 package models
 
 type SuccessResponse struct {
-	Status    string `json:"status"`
-	Data      any    `json:"data,omitempty"`
-	Message   string `json:"message,omitempty"`
-	Timestamp int64  `json:"timestamp"`
+	StatusCode int    `json:"statusCode"`
+	Data       any    `json:"data,omitempty"`
+	Message    string `json:"message,omitempty"`
+	Timestamp  int64  `json:"timestamp"`
 }
 
 type ErrorResponse struct {
-	Status    string       `json:"status"`
-	Error     ErrorPayload `json:"error"`
-	Timestamp int64        `json:"timestamp"`
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
+	Timestamp  int64  `json:"timestamp"`
 }
 
 type ErrorPayload struct {
-	Message    string      `json:"message"`
-	Details    interface{} `json:"details,omitempty"`
-	Timestamp  int64       `json:"timestamp"`
-	StatusCode int         `json:"statusCode"`
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
+	Timestamp  int64  `json:"timestamp"`
+}
+
+type OrderResponse struct {
+	OrderID   string `json:"orderId"`
+	Status    string `json:"status"`
+	Symbol    string `json:"symbol"`
+	Exchange  string `json:"exchange"`
+	Timestamp int64  `json:"timestamp"`
 }

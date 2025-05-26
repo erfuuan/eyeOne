@@ -24,7 +24,6 @@ func ExchangeMiddleware() gin.HandlerFunc {
 		if !ok {
 			c.JSON(http.StatusBadRequest, models.ErrorPayload{
 				Message:    "Invalid exchange. Allowed: binance, kucoin",
-				Details:    nil,
 				Timestamp:  time.Now().Unix(),
 				StatusCode: http.StatusBadRequest,
 			})

@@ -1,5 +1,9 @@
 package models
 
+import (
+	"regexp"
+)
+
 type CreateOrderRequest struct {
 	// Symbol    string  `json:"symbol" validate:"required,alphanum,min=6,max=10"`
 	// Side      string  `json:"side" validate:"required,oneof=buy sell"`
@@ -14,14 +18,6 @@ type CreateOrderRequest struct {
 	Price     float64 `json:"price" binding:"required"`
 }
 
-type OrderResponse struct {
-	OrderID   string `json:"orderId"`
-	Status    string `json:"status"`
-	Symbol    string `json:"symbol"`
-	Exchange  string `json:"exchange"`
-	Timestamp int64  `json:"timestamp"`
-}
-
 type CancelOrderRequest struct {
 	Symbol  string `json:"symbol" binding:"required"`
 	OrderID string `json:"orderId" binding:"required"`
@@ -34,4 +30,28 @@ type GetBalanceRequest struct {
 type GetOrderBookRequest struct {
 	Symbol string `json:"symbol" binding:"required"`
 	Limit  int    `json:"limit" binding:"omitempty"`
+}
+
+var ValidSymbolRegex = regexp.MustCompile(`^[A-Z0-9]{6,20}$`)
+
+func ValidateSymbol(symbol string) (bool, string) {
+	if symbol == "" {
+		return false, "symbol is required"
+	}
+	if !ValidSymbolRegex.MatchString(symbol) {
+		return false, "symbol must be uppercase letters or digits, 6 to 20 characters"
+	}
+	return true, ""
+}
+
+var validAssetRegex = regexp.MustCompile(`^[A-Z0-9]{2,10}$`)
+
+func ValidateAsset(asset string) (bool, string) {
+	if asset == "" {
+		return false, "asset is required"
+	}
+	if !validAssetRegex.MatchString(asset) {
+		return false, "asset must be uppercase letters or digits, 2 to 10 characters"
+	}
+	return true, ""
 }

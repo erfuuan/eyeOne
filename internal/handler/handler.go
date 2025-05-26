@@ -23,10 +23,16 @@ func NewHandler(s *service.TradingService) *Handler {
 
 func (h *Handler) CreateOrder(c *gin.Context) {
 	var req models.CreateOrderRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid request payload",
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
+
 	exchangeName, _ := c.Get("exchange")
 	exNameStr := exchangeName.(string)
 	exName := exchange.ExchangeType(exNameStr)
@@ -43,16 +49,29 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		fmt.Println(err)
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{
-		"status":    "success",
-		"orderId":   orderID,
-		"exchange":  exName,
-		"symbol":    strings.ToUpper(req.Symbol),
-		"side":      strings.ToLower(req.Side),
-		"type":      req.OrderType,
-		"quantity":  req.Quantity,
-		"price":     req.Price,
-		"timestamp": time.Now().Unix(),
+
+	type OrderData struct {
+		OrderID  string  `json:"orderId"`
+		Exchange string  `json:"exchange"`
+		Symbol   string  `json:"symbol"`
+		Side     string  `json:"side"`
+		Type     string  `json:"type"`
+		Quantity float64 `json:"quantity"`
+		Price    float64 `json:"price"`
+	}
+	c.JSON(http.StatusCreated, models.SuccessResponse{
+		StatusCode: http.StatusCreated,
+		Data: OrderData{
+			OrderID:  orderID,
+			Exchange: exNameStr,
+			Symbol:   strings.ToUpper(req.Symbol),
+			Side:     strings.ToLower(req.Side),
+			Type:     req.OrderType,
+			Quantity: req.Quantity,
+			Price:    req.Price,
+		},
+		Message:   "order created successfully",
+		Timestamp: time.Now().Unix(),
 	})
 }
 
@@ -60,12 +79,27 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 	exchangeName, _ := c.Get("exchange")
 	exNameStr := exchangeName.(string)
 	exName := exchange.ExchangeType(exNameStr)
-	symbol := c.Query("symbol")
+	symbol := c.Param("symbol")
 	orderID := c.Param("orderID")
+
 	if orderID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing orderID parameter"})
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    "missing orderID parameter",
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
+
+	if ok, errMsg := models.ValidateSymbol(symbol); !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    errMsg,
+			Timestamp:  time.Now().Unix(),
+		})
+		return
+	}
+
 	err := h.service.CancelOrder(c.Request.Context(), exName, symbol, orderID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -79,28 +113,63 @@ func (h *Handler) GetBalance(c *gin.Context) {
 	exNameStr := exchangeName.(string)
 	exName := exchange.ExchangeType(exNameStr)
 	asset := c.Param("asset")
-	if asset == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing asset parameter"})
+
+	if ok, errMsg := models.ValidateAsset(asset); !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    errMsg,
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
+
 	balance, err := h.service.GetBalance(c.Request.Context(), exName, asset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"asset": asset, "balance": balance})
+
+	type BalanceData struct {
+		Asset   string  `json:"asset"`
+		Balance float64 `json:"balance"`
+	}
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		StatusCode: http.StatusOK,
+		Data: BalanceData{
+			Asset:   asset,
+			Balance: balance,
+		},
+		Message:   "balance retrieved successfully",
+		Timestamp: time.Now().Unix(),
+	})
+
 }
 
 func (h *Handler) GetOrderBook(c *gin.Context) {
+	exchangeName, _ := c.Get("exchange")
+	exNameStr := exchangeName.(string)
+	exName := exchange.ExchangeType(exNameStr)
+
 	symbol := c.Param("symbol")
-	if symbol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing symbol parameter"})
+	if ok, errMsg := models.ValidateSymbol(symbol); !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    errMsg,
+			Timestamp:  time.Now().Unix(),
+		})
 		return
 	}
-	orderBook, err := h.service.GetOrderBook(c.Request.Context(), "binanace", symbol)
+
+	orderBook, err := h.service.GetOrderBook(c.Request.Context(), exName, symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, orderBook)
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		StatusCode: http.StatusOK,
+		Data:       orderBook,
+		Message:    "order book retrieved successfully",
+		Timestamp:  time.Now().Unix(),
+	})
 }
