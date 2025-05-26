@@ -29,7 +29,10 @@ type ExchangeType string
 const (
 	Binance ExchangeType = "binance"
 	KuCoin  ExchangeType = "kucoin"
+	Bitpin  ExchangeType = "bitpin"
 )
+
+// Wallex  ExchangeType = "wallex"
 
 var registry = make(map[ExchangeType]Exchange)
 

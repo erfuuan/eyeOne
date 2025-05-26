@@ -16,6 +16,7 @@ import (
 	"eyeOne/internal/api"
 	"eyeOne/internal/exchange"
 	"eyeOne/internal/handler"
+	"eyeOne/internal/httpclient"
 	"eyeOne/internal/service"
 	"eyeOne/pkg/logger"
 )
@@ -44,8 +45,17 @@ func main() {
 		logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
 	}
 
+	client := httpclient.New(logger)
+	bitpin, err := exchange.NewBitpinExchange(client, logger, cfg)
+
+	// bitpin, err := exchange.NewBitpinExchange(cfg.BitpinAPIKey, cfg.BitpinSecretKey)
+	if err != nil {
+		logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
+	}
+
 	exchanges[exchange.Binance] = binance
 	exchanges[exchange.KuCoin] = kucoin
+	exchanges[exchange.Bitpin] = bitpin
 
 	// Setup service and handlers
 	tradingService := service.NewTradingService(exchanges)

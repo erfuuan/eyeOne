@@ -16,6 +16,7 @@ import (
 var validExchanges = map[string]exchange.ExchangeType{
 	"binance": exchange.Binance,
 	"kucoin":  exchange.KuCoin,
+	"bitpin":  exchange.Bitpin,
 }
 
 func ExchangeMiddleware() gin.HandlerFunc {
@@ -31,7 +32,7 @@ func ExchangeMiddleware() gin.HandlerFunc {
 			)
 
 			c.JSON(http.StatusBadRequest, models.ErrorPayload{
-				Message:    "Invalid exchange. Allowed: binance, kucoin",
+				Message:    "Invalid exchange. Allowed: binance, kucoin, bitpin, wallex",
 				Timestamp:  time.Now().Unix(),
 				StatusCode: http.StatusBadRequest,
 			})

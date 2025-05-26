@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"go.uber.org/zap"
 
@@ -37,7 +38,7 @@ type GetOrderBookRequest struct {
 // ========== Validation ==========
 
 var (
-	validSymbolRegex = regexp.MustCompile(`^[A-Z0-9]{6,20}$`)
+	validSymbolRegex = regexp.MustCompile(`^[A-Z0-9_]{6,20}$`)
 	validAssetRegex  = regexp.MustCompile(`^[A-Z0-9]{2,10}$`)
 )
 
@@ -71,4 +72,23 @@ func ValidateAsset(asset string) error {
 		return err
 	}
 	return nil
+}
+
+func ConvertToEntries(entries [][]string) []OrderBookEntry {
+	result := make([]OrderBookEntry, 0, len(entries))
+	for _, pair := range entries {
+		if len(pair) != 2 {
+			continue
+		}
+		price, err1 := strconv.ParseFloat(pair[0], 64)
+		qty, err2 := strconv.ParseFloat(pair[1], 64)
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		result = append(result, OrderBookEntry{
+			Price:    price,
+			Quantity: qty,
+		})
+	}
+	return result
 }

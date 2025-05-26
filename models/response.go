@@ -33,3 +33,8 @@ type BalanceDataResponse struct {
 	Asset   string  `json:"asset"`
 	Balance float64 `json:"balance"`
 }
+
+type BitpinOrderBookResponse struct {
+	Asks [][]string `json:"asks"`
+	Bids [][]string `json:"bids"`
+}

@@ -16,6 +16,8 @@ type Config struct {
 	KucoinAPIKey     string
 	KucoinSecretKey  string
 	KucoinPassphrase string
+	BitpinAPIKey     string
+	BitpinSecretKey  string
 }
 
 func LoadEnv() *Config {
@@ -33,6 +35,8 @@ func LoadEnv() *Config {
 		KucoinAPIKey:     mustGetEnv("KUCOIN_API_KEY", logger),
 		KucoinSecretKey:  mustGetEnv("KUCOIN_SECRET_KEY", logger),
 		KucoinPassphrase: mustGetEnv("KUCOIN_PASSPHRASE", logger),
+		BitpinAPIKey:     mustGetEnv("BITPIN_API_KEY", logger),
+		BitpinSecretKey:  mustGetEnv("BITPIN_SECRET_KEY", logger),
 	}
 
 	return cfg
