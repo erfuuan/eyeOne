@@ -1,7 +1,53 @@
+// package middleware
+
+// import (
+// 	"fmt"
+// 	"net/http"
+// 	"strings"
+// 	"time"
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
+// 	"github.com/gin-gonic/gin"
+
+// 	"eyeOne/internal/exchange"
+// 	"eyeOne/models"
+// )
+
+// var validExchanges = map[string]exchange.ExchangeType{
+// 	"binance": exchange.Binance,
+// 	"kucoin":  exchange.KuCoin,
+// }
+
+// func ExchangeMiddleware() gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		raw := strings.ToLower(c.Param("exchange"))
+// 		_, ok := validExchanges[raw]
+// 		if !ok {
+// 			c.JSON(http.StatusBadRequest, models.ErrorPayload{
+// 				Message:    "Invalid exchange. Allowed: binance, kucoin",
+// 				Timestamp:  time.Now().Unix(),
+// 				StatusCode: http.StatusBadRequest,
+// 			})
+// 			c.Abort()
+// 			return
+// 		}
+// 		fmt.Println(raw)
+// 		c.Set("exchange", raw)
+// 		c.Next()
+// 	}
+// }
+
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +56,9 @@ import (
 
 	"eyeOne/internal/exchange"
 	"eyeOne/models"
+	"eyeOne/pkg/logger"
+
+	"go.uber.org/zap"
 )
 
 var validExchanges = map[string]exchange.ExchangeType{
@@ -18,10 +67,17 @@ var validExchanges = map[string]exchange.ExchangeType{
 }
 
 func ExchangeMiddleware() gin.HandlerFunc {
+	log := logger.GetLogger()
+
 	return func(c *gin.Context) {
 		raw := strings.ToLower(c.Param("exchange"))
 		_, ok := validExchanges[raw]
 		if !ok {
+			log.Warn("Invalid exchange parameter",
+				zap.String("exchange", raw),
+				zap.String("path", c.Request.URL.Path),
+			)
+
 			c.JSON(http.StatusBadRequest, models.ErrorPayload{
 				Message:    "Invalid exchange. Allowed: binance, kucoin",
 				Timestamp:  time.Now().Unix(),
@@ -30,7 +86,12 @@ func ExchangeMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		fmt.Println(raw)
+
+		log.Info("Exchange validated",
+			zap.String("exchange", raw),
+			zap.String("path", c.Request.URL.Path),
+		)
+
 		c.Set("exchange", raw)
 		c.Next()
 	}
