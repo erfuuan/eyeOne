@@ -121,9 +121,9 @@ func (b *BitpinExchange) CreateOrder(ctx context.Context, symbol, side, orderTyp
 		"side":             side,
 		"base_amount":      fmt.Sprintf("%.8f", quantity),
 		"price":            fmt.Sprintf("%.0f", price),
-		"quote_amount":     1000,
-		"stop_price":       0.1,
-		"oco_target_price": 0.1,
+		"quote_amount":     fmt.Sprintf("%.0f", quantity*price),
+		"stop_price":       0,
+		"oco_target_price": 0,
 		"identifier":       uuid.NewString(),
 	}
 
