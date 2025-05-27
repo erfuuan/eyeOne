@@ -19,11 +19,14 @@ var validExchanges = map[string]exchange.ExchangeType{
 	"bitpin":  exchange.Bitpin,
 }
 
+var allowedExchanges = []string{"bitpin"}
+
 func ExchangeMiddleware() gin.HandlerFunc {
 	log := logger.GetLogger()
 
 	return func(c *gin.Context) {
 		raw := strings.ToLower(c.Param("exchange"))
+
 		_, ok := validExchanges[raw]
 		if !ok {
 			log.Warn("Invalid exchange parameter",
@@ -32,9 +35,24 @@ func ExchangeMiddleware() gin.HandlerFunc {
 			)
 
 			c.JSON(http.StatusBadRequest, models.ErrorPayload{
-				Message:    "Invalid exchange. Allowed: binance, kucoin, bitpin, wallex",
+				Message:    "Invalid exchange. Allowed: bitpin",
 				Timestamp:  time.Now().Unix(),
 				StatusCode: http.StatusBadRequest,
+			})
+			c.Abort()
+			return
+		}
+
+		if raw != "bitpin" {
+			log.Warn("Exchange not available yet",
+				zap.String("exchange", raw),
+				zap.String("path", c.Request.URL.Path),
+			)
+
+			c.JSON(http.StatusServiceUnavailable, models.ErrorPayload{
+				Message:    "Exchange '" + raw + "' is not available at the moment. Only 'bitpin' is supported.",
+				Timestamp:  time.Now().Unix(),
+				StatusCode: http.StatusServiceUnavailable,
 			})
 			c.Abort()
 			return

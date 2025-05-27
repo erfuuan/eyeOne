@@ -74,7 +74,7 @@ func (k *KucoinExchange) CreateOrder(ctx context.Context, symbol, side, orderTyp
 	return orderResponse.OrderOid, nil, 201
 }
 
-func (k *KucoinExchange) CancelOrder(ctx context.Context, symbol, orderID string) error {
+func (k *KucoinExchange) CancelOrder(ctx context.Context, symbol, orderID string) (error, int) {
 	k.log.Info("Cancelling Kucoin order",
 		zap.String("symbol", symbol),
 		zap.String("orderID", orderID),
@@ -83,11 +83,11 @@ func (k *KucoinExchange) CancelOrder(ctx context.Context, symbol, orderID string
 	_, err := k.client.CancelOrder(ctx, orderID)
 	if err != nil {
 		k.log.Error("Failed to cancel order", zap.Error(err))
-		return fmt.Errorf("failed to cancel order: %w", err)
+		return fmt.Errorf("failed to cancel order: %w", err), 500
 	}
 
 	k.log.Info("Order cancelled successfully", zap.String("orderID", orderID))
-	return nil
+	return nil, 200
 }
 
 func (k *KucoinExchange) GetBalance(ctx context.Context, asset string) (float64, error, int) {

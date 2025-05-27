@@ -23,7 +23,6 @@ import (
 
 func main() {
 	logger := logger.GetLogger()
-
 	defer logger.Sync()
 
 	if err := godotenv.Load(); err != nil {
@@ -36,14 +35,14 @@ func main() {
 	exchanges := make(map[exchange.ExchangeType]exchange.Exchange)
 
 	//? need api_key
-	// binance, err := exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey)
-	// if err != nil {
-	// 	logger.Fatal("Failed to initialize Binance", zap.Error(err))
-	// }
-	// kucoin, err := exchange.NewKucoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
-	// if err != nil {
-	// 	logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
-	// }
+	binance, err := exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey)
+	if err != nil {
+		logger.Fatal("Failed to initialize Binance", zap.Error(err))
+	}
+	kucoin, err := exchange.NewKucoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
+	if err != nil {
+		logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
+	}
 
 	client := httpclient.New(logger)
 	bitpin, err := exchange.NewBitpinExchange(client, logger, cfg)
@@ -51,8 +50,8 @@ func main() {
 		logger.Fatal("Failed to initialize bitpin", zap.Error(err))
 	}
 
-	// exchanges[exchange.Binance] = binance
-	// exchanges[exchange.KuCoin] = kucoin
+	exchanges[exchange.Binance] = binance
+	exchanges[exchange.KuCoin] = kucoin
 	exchanges[exchange.Bitpin] = bitpin
 
 	tradingService := service.NewTradingService(exchanges)

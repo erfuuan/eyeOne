@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +21,20 @@ func NewHandler(s *service.TradingService) *Handler {
 	return &Handler{service: s}
 }
 
+func getExchange(c *gin.Context) (exchange.ExchangeType, string, bool) {
+	exchangeName, exists := c.Get("exchange")
+	if !exists {
+		return "", "", false
+	}
+
+	exNameStr, ok := exchangeName.(string)
+	if !ok {
+		return "", "", false
+	}
+
+	return exchange.ExchangeType(exNameStr), exNameStr, true
+}
+
 func (h *Handler) CreateOrder(c *gin.Context) {
 	var req models.CreateOrderRequest
 
@@ -32,12 +47,21 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	exchangeName, _ := c.Get("exchange")
-	exNameStr := exchangeName.(string)
-	exName := exchange.ExchangeType(exNameStr)
+	exName, exNameStr, ok := getExchange(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Missing or invalid exchange name",
+			Timestamp:  time.Now().Unix(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
 
 	orderID, err, status := h.service.CreateOrder(
-		c.Request.Context(),
+		ctx,
 		exName,
 		strings.ToUpper(req.Symbol),
 		strings.ToLower(req.Side),
@@ -71,31 +95,32 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 }
 
 func (h *Handler) CancelOrder(c *gin.Context) {
-	exchangeName, _ := c.Get("exchange")
-	exNameStr := exchangeName.(string)
-	exName := exchange.ExchangeType(exNameStr)
+	exName, _, ok := getExchange(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Missing or invalid exchange name",
+			Timestamp:  time.Now().Unix(),
+		})
+		return
+	}
+
 	symbol := c.Param("symbol")
 	orderID := c.Param("orderID")
 
 	if orderID == "" {
 		c.JSON(http.StatusBadRequest, models.ErrorPayload{
 			StatusCode: http.StatusBadRequest,
-			Message:    "missing orderID parameter",
+			Message:    "Missing orderID parameter",
 			Timestamp:  time.Now().Unix(),
 		})
 		return
 	}
 
-	// if err := models.ValidateSymbol(symbol, exNameStr); err != nil {
-	// 	c.JSON(http.StatusBadRequest, models.ErrorPayload{
-	// 		StatusCode: http.StatusBadRequest,
-	// 		Message:    err.Error(),
-	// 		Timestamp:  time.Now().Unix(),
-	// 	})
-	// 	return
-	// }
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
 
-	err, status := h.service.CancelOrder(c.Request.Context(), exName, symbol, orderID)
+	err, status := h.service.CancelOrder(ctx, exName, symbol, orderID)
 	if err != nil {
 		c.JSON(status, models.ErrorResponse{
 			StatusCode: status,
@@ -113,11 +138,17 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 }
 
 func (h *Handler) GetBalance(c *gin.Context) {
-	exchangeName, _ := c.Get("exchange")
-	exNameStr := exchangeName.(string)
-	exName := exchange.ExchangeType(exNameStr)
-	asset := c.Param("asset")
+	exName, _, ok := getExchange(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Missing or invalid exchange name",
+			Timestamp:  time.Now().Unix(),
+		})
+		return
+	}
 
+	asset := c.Param("asset")
 	if err := models.ValidateAsset(asset); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorPayload{
 			StatusCode: http.StatusBadRequest,
@@ -127,7 +158,10 @@ func (h *Handler) GetBalance(c *gin.Context) {
 		return
 	}
 
-	balance, err, status := h.service.GetBalance(c.Request.Context(), exName, asset)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	balance, err, status := h.service.GetBalance(ctx, exName, asset)
 	if err != nil {
 		c.JSON(status, models.ErrorResponse{
 			StatusCode: status,
@@ -146,17 +180,21 @@ func (h *Handler) GetBalance(c *gin.Context) {
 		Message:   "balance retrieved successfully",
 		Timestamp: time.Now().Unix(),
 	})
-
 }
 
 func (h *Handler) GetOrderBook(c *gin.Context) {
-	exchangeName, _ := c.Get("exchange")
-	exNameStr := exchangeName.(string)
-	exName := exchange.ExchangeType(exNameStr)
+	exName, _, ok := getExchange(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, models.ErrorPayload{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Missing or invalid exchange name",
+			Timestamp:  time.Now().Unix(),
+		})
+		return
+	}
 
 	symbol := c.Param("symbol")
-
-	if err := models.ValidateSymbol(symbol, exNameStr); err != nil {
+	if err := models.ValidateSymbol(symbol, string(exName)); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorPayload{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
@@ -165,7 +203,10 @@ func (h *Handler) GetOrderBook(c *gin.Context) {
 		return
 	}
 
-	orderBook, err, status := h.service.GetOrderBook(c.Request.Context(), exName, symbol)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	orderBook, err, status := h.service.GetOrderBook(ctx, exName, symbol)
 	if err != nil {
 		c.JSON(status, models.ErrorResponse{
 			StatusCode: status,

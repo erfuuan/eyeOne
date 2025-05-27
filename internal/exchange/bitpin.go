@@ -32,88 +32,94 @@ func NewBitpinExchange(client *httpclient.Client, logger *zap.Logger, cfg *confi
 	}, nil
 }
 
-func (b *BitpinExchange) GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error, int) {
-	urlToken := "https://api.bitpin.ir/api/v1/usr/authenticate/"
-	headers := map[string]string{
-		"Content-Type": "application/json",
-	}
+func (b *BitpinExchange) AuthenticateBitpin(ctx context.Context) (struct {
+	Access  string `json:"access"`
+	Refresh string `json:"refresh"`
+}, error, int) {
+	url := fmt.Sprintf("%s/api/v1/usr/authenticate/", b.baseURL)
 	data := map[string]string{
 		"api_key":    b.apiKey,
 		"secret_key": b.secretKey,
 	}
-	bodyToken, status, err := b.client.PostJSON(ctx, urlToken, data, headers)
+	headers := map[string]string{
+		"Content-Type": "application/json",
+	}
+	body, status, err := b.client.PostJSON(ctx, url, data, headers)
 	if err != nil {
-		b.logger.Error("failed to authenticate", zap.Error(err))
-		return models.OrderBook{}, err, status
+		b.logger.Error("bitpin authentication failed", zap.Error(err))
+		return struct {
+			Access  string `json:"access"`
+			Refresh string `json:"refresh"`
+		}{}, err, status
 	}
 	if status < 200 || status >= 300 {
-		b.logger.Error("authentication failed", zap.Int("status", status), zap.ByteString("body", bodyToken))
-		return models.OrderBook{}, fmt.Errorf("authentication failed with status %d", status), status
+		b.logger.Error("bitpin authentication failed with status", zap.Int("status", status), zap.ByteString("body", body))
+		return struct {
+			Access  string `json:"access"`
+			Refresh string `json:"refresh"`
+		}{}, fmt.Errorf("authentication failed with status %d", status), status
 	}
 
 	var tokenResp struct {
 		Access  string `json:"access"`
 		Refresh string `json:"refresh"`
 	}
-
-	if err := json.Unmarshal(bodyToken, &tokenResp); err != nil {
-		b.logger.Error("failed to parse token response", zap.Error(err))
-		return models.OrderBook{}, err, 500
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		b.logger.Error("failed to unmarshal auth response", zap.Error(err))
+		return tokenResp, err, 500
 	}
-	urlGetOrderBook := fmt.Sprintf("%s/api/v1/mth/orderbook/%s/", b.baseURL, symbol)
+	return tokenResp, nil, 200
+}
 
-	headers = map[string]string{
+func (b *BitpinExchange) GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error, int) {
+	tokenResp, err, status := b.AuthenticateBitpin(ctx)
+	if err != nil {
+		return models.OrderBook{}, err, status
+	}
+
+	url := fmt.Sprintf("%s/api/v1/mth/orderbook/%s/", b.baseURL, symbol)
+	headers := map[string]string{
 		"Authorization": "Bearer " + tokenResp.Access,
 		"Content-Type":  "application/json",
 	}
-
-	bodyGetOrderBook, status, err := b.client.Get(ctx, urlGetOrderBook, headers)
+	body, status, err := b.client.Get(ctx, url, headers)
 	if err != nil {
-		b.logger.Error("failed to get order book from bitpin", zap.Error(err))
+		b.logger.Error("failed to get order book", zap.Error(err))
 		return models.OrderBook{}, err, status
 	}
 	if status < 200 || status >= 300 {
-		b.logger.Error("failed to get order book", zap.Int("status", status), zap.ByteString("body", bodyGetOrderBook))
-		return models.OrderBook{}, fmt.Errorf("failed to get order book with status %d", status), status
+		b.logger.Error("get order book failed", zap.Int("status", status), zap.ByteString("body", body))
+		return models.OrderBook{}, fmt.Errorf("order book error %d", status), status
 	}
 
 	var res models.BitpinOrderBookResponse
-	if err := json.Unmarshal(bodyGetOrderBook, &res); err != nil {
-		b.logger.Error("failed to unmarshal bitpin order book response", zap.Error(err))
+	if err := json.Unmarshal(body, &res); err != nil {
+		b.logger.Error("failed to parse order book response", zap.Error(err))
 		return models.OrderBook{}, err, 500
 	}
 
-	bids := models.ConvertToEntries(res.Bids)
-	asks := models.ConvertToEntries(res.Asks)
-
 	return models.OrderBook{
-		Bids: bids,
-		Asks: asks,
+		Bids: models.ConvertToEntries(res.Bids),
+		Asks: models.ConvertToEntries(res.Asks),
 	}, nil, 200
 }
 
 func (b *BitpinExchange) CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error, int) {
-	b.logger.Info("Bitpin: creating order")
-
-	tokenResp, err, statusCode := b.AuthenticateBitpin(ctx)
+	tokenResp, err, status := b.AuthenticateBitpin(ctx)
 	if err != nil {
-		b.logger.Error("authentication failed", zap.Error(err))
-		return "", err, statusCode
+		return "", err, status
 	}
 
-	urlOrder := "https://api.bitpin.ir/api/v1/odr/orders/"
-	orderHeaders := map[string]string{
+	url := fmt.Sprintf("%s/api/v1/odr/orders/", b.baseURL)
+	headers := map[string]string{
 		"Authorization": "Bearer " + tokenResp.Access,
 		"Content-Type":  "application/json",
 	}
-
-	orderPayload := map[string]interface{}{
-		"symbol": symbol,
-		"type":   orderType,
-		"side":   side,
-		// "base_amount":      fmt.Sprintf("%.8f", quantity),
-		"base_amount": 100,
-
+	payload := map[string]interface{}{
+		"symbol":           symbol,
+		"type":             orderType,
+		"side":             side,
+		"base_amount":      fmt.Sprintf("%.8f", quantity),
 		"price":            fmt.Sprintf("%.0f", price),
 		"quote_amount":     1000,
 		"stop_price":       0.1,
@@ -121,15 +127,9 @@ func (b *BitpinExchange) CreateOrder(ctx context.Context, symbol, side, orderTyp
 		"identifier":       uuid.NewString(),
 	}
 
-	respBody, status, err := b.client.PostJSON(ctx, urlOrder, orderPayload, orderHeaders)
-
-	if status < 200 || status >= 300 {
-		b.logger.Error("Bitpin: order creation failed", zap.Int("status", status), zap.ByteString("body", respBody))
-		return "", err, status
-	}
-
-	if err != nil {
-		b.logger.Error("Bitpin: failed to create order, with ", zap.Int("status", status), zap.Error(err))
+	respBody, status, err := b.client.PostJSON(ctx, url, payload, headers)
+	if err != nil || status < 200 || status >= 300 {
+		b.logger.Error("order creation failed", zap.Int("status", status), zap.Error(err), zap.ByteString("body", respBody))
 		return "", err, status
 	}
 
@@ -139,91 +139,70 @@ func (b *BitpinExchange) CreateOrder(ctx context.Context, symbol, side, orderTyp
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(respBody, &orderResp); err != nil {
-		b.logger.Error("Bitpin: failed to unmarshal order response", zap.Error(err))
+		b.logger.Error("unmarshal order response failed", zap.Error(err))
 		return "", err, 500
 	}
-
-	orderID := fmt.Sprintf("%d", orderResp.Data.ID)
-	b.logger.Info("Bitpin: order created successfully", zap.String("order_id", orderID))
-	return orderID, nil, 201
+	return fmt.Sprintf("%d", orderResp.Data.ID), nil, 201
 }
 
 func (b *BitpinExchange) CancelOrder(ctx context.Context, symbol, orderID string) (error, int) {
-	b.logger.Info("Bitpin: canceling order", zap.String("orderID", orderID))
-
-	tokenResp, err, statusCode := b.AuthenticateBitpin(ctx)
+	tokenResp, err, status := b.AuthenticateBitpin(ctx)
 	if err != nil {
-		b.logger.Error("authentication failed", zap.Error(err))
-		return err, statusCode
+		return err, status
 	}
 
-	url := fmt.Sprintf("https://api.bitpin.ir/api/v1/odr/orders/%s/", orderID)
+	url := fmt.Sprintf("%s/api/v1/odr/orders/%s/", b.baseURL, orderID)
 	headers := map[string]string{
 		"Authorization": "Bearer " + tokenResp.Access,
 		"Content-Type":  "application/json",
 	}
-
 	respBody, status, err := b.client.Delete(ctx, url, headers)
-	if status < 200 || status >= 300 {
-		b.logger.Error("Bitpin: cancel order failed", zap.Int("status", status), zap.ByteString("body", respBody))
+	if err != nil || status < 200 || status >= 300 {
+		b.logger.Error("cancel order failed", zap.Int("status", status), zap.Error(err), zap.ByteString("body", respBody))
 		return err, status
 	}
-
-	if err != nil {
-		b.logger.Error("Bitpin: error canceling order", zap.Error(err))
-		return err, status
-	}
-
-	b.logger.Info("Bitpin: order canceled successfully", zap.String("orderID", orderID))
 	return nil, 200
 }
 
 func (b *BitpinExchange) GetBalance(ctx context.Context, asset string) (float64, error, int) {
-	b.logger.Info("Bitpin: getting balance", zap.String("asset", asset))
-
 	tokenResp, err, status := b.AuthenticateBitpin(ctx)
 	if err != nil {
-		b.logger.Error("authentication failed", zap.Error(err))
 		return 0, err, status
 	}
 
-	urlWallet := "https://api.bitpin.ir/api/v1/wlt/wallets/"
+	url := fmt.Sprintf("%s/api/v1/wlt/wallets/", b.baseURL)
 	headers := map[string]string{
 		"Authorization": "Bearer " + tokenResp.Access,
 		"Content-Type":  "application/json",
 	}
-	body, status, err := b.client.Get(ctx, urlWallet, headers)
+	body, status, err := b.client.Get(ctx, url, headers)
 	if err != nil {
-		b.logger.Error("failed to get wallets", zap.Error(err))
+		b.logger.Error("get wallets failed", zap.Error(err))
 		return 0, err, status
 	}
 	if status < 200 || status >= 300 {
-		b.logger.Error("failed to get wallets", zap.Int("status", status), zap.ByteString("body", body))
-		return 0, fmt.Errorf("failed to get wallets, status %d", status), status
+		b.logger.Error("get wallets failed with status", zap.Int("status", status), zap.ByteString("body", body))
+		return 0, fmt.Errorf("wallets failed %d", status), status
 	}
 
 	var wallets []struct {
-		ID      int    `json:"id"`
 		Asset   string `json:"asset"`
 		Balance string `json:"balance"`
-		Frozen  string `json:"frozen"`
-		Service string `json:"service"`
 	}
 	if err := json.Unmarshal(body, &wallets); err != nil {
-		b.logger.Error("failed to unmarshal wallets response", zap.Error(err))
-		return 0, err, status
+		b.logger.Error("unmarshal wallets failed", zap.Error(err))
+		return 0, err, 500
 	}
 
 	for _, w := range wallets {
 		if w.Asset == asset {
 			balance, err := strconv.ParseFloat(w.Balance, 64)
 			if err != nil {
-				b.logger.Error("failed to parse balance string", zap.String("balance", w.Balance), zap.Error(err))
+				b.logger.Error("parse balance failed", zap.String("balance", w.Balance), zap.Error(err))
 				return 0, err, status
 			}
 			return balance, nil, status
 		}
 	}
-
-	return 0, fmt.Errorf("balance for asset %s not found", asset), status
+	return 0, fmt.Errorf("asset %s not found", asset), status
 }

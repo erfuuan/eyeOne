@@ -48,12 +48,13 @@ func (ts *TradingService) CreateOrder(ctx context.Context, exType exchange.Excha
 	if err != nil {
 		return "", err, statusCode
 	}
+
 	orderID, err, status := ex.CreateOrder(ctx, symbol, side, orderType, quantity, price)
 	if err != nil {
 		ts.log.Error("Failed to create order", zap.Error(err))
 		return "", err, status
-
 	}
+
 	return orderID, nil, status
 }
 
@@ -68,6 +69,7 @@ func (ts *TradingService) CancelOrder(ctx context.Context, exType exchange.Excha
 	if err != nil {
 		return err, status
 	}
+
 	err, status = ex.CancelOrder(ctx, symbol, orderID)
 	if err != nil {
 		ts.log.Error("Failed to cancel order", zap.Error(err))
@@ -85,10 +87,12 @@ func (ts *TradingService) GetBalance(ctx context.Context, exType exchange.Exchan
 	if err != nil {
 		return 0, err, status
 	}
+
 	balance, err, status := ex.GetBalance(ctx, asset)
 	if err != nil {
 		ts.log.Error("Failed to get balance", zap.Error(err))
 	}
+
 	return balance, err, status
 }
 
@@ -102,9 +106,11 @@ func (ts *TradingService) GetOrderBook(ctx context.Context, exType exchange.Exch
 	if err != nil {
 		return models.OrderBook{}, err, status
 	}
+
 	book, err, status := ex.GetOrderBook(ctx, symbol)
 	if err != nil {
 		ts.log.Error("Failed to get order book", zap.Error(err))
 	}
+
 	return book, err, status
 }
