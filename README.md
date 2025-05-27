@@ -21,7 +21,7 @@
 1. **Clone the Repository**:
 
    ```bash
-   git clone https://github.com/yourusername/eyeOne.git
+   git clone https://github.com/erfuuan/eyeOne.git
    cd eyeOne
    ```
 
@@ -44,26 +44,25 @@
    The server will start on `http://localhost:8080`.
 
 ---
+## 🐳 Deployment with Docker
 
+To deploy **eyeOne** using Docker, follow these steps:
+
+### Build the Docker image:
+
+```bash
+docker build -f build/Dockerfile -t eyeone .
+```
+
+### Run the Docker container:
+```bash
+docker run -d -p 3000:3000 --name eyeOne eyeOne:latest
+```
+---
 ## 📖 API Endpoints
-
 ### 1. Create Order
-
-- **Endpoint:** `POST /order`
 - **Description:** Place a new order.
-- **Request Body:**
-
-  ```json
-  {
-    "symbol": "BTCUSDT",
-    "side": "BUY",
-    "orderType": "LIMIT",
-    "quantity": 0.1,
-    "price": 30000
-  }
-  ```
 - **Response:** Returns the order ID upon successful creation.
-
 ---
 
 ### 2. Cancel Order
@@ -75,23 +74,13 @@
 - **Response:** Confirmation of order cancellation.
 
 ---
-
 ### 3. Get Balance
-
-- **Endpoint:** `GET /balance/:asset`
 - **Description:** Retrieve the balance for a specific asset.
-- **Parameters:**
-  - `asset`: The asset symbol (e.g., BTC, ETH).
 - **Response:** Returns the balance amount for the specified asset.
 
 ---
-
 ### 4. Get Order Book
-
-- **Endpoint:** `GET /order-book/:symbol`
 - **Description:** Fetch the order book for a trading pair.
-- **Parameters:**
-  - `symbol`: The trading pair symbol (e.g., BTCUSDT).
 - **Response:** Returns the current order book data for the specified symbol.
 
 ---

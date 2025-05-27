@@ -1,0 +1,124 @@
+{
+	"info": {
+		"_postman_id": "595a7c8c-09b6-4b73-9c86-97a7aace37f0",
+		"name": "eyeOne",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16025267"
+	},
+	"item": [
+		{
+			"name": "createOrder",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"Symbol\": \"USDT_IRT\",\n    \"Side\": \"buy\",\n    \"OrderType\": \"limit\",\n    \"Quantity\": 0.01,\n    \"Price\": 62000\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/order/bitpin",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"order",
+						"bitpin"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "calcel order",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/order/bitpin/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"order",
+						"bitpin",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Balance",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/v1/balance/bitpin/USDT",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"balance",
+						"bitpin",
+						"USDT"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Order Book",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/v1/order-book/bitpin/BTC_USDT",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"order-book",
+						"bitpin",
+						"BTC_USDT"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
