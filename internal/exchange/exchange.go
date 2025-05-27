@@ -8,10 +8,10 @@ import (
 )
 
 type Exchange interface {
-	CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error)
-	CancelOrder(ctx context.Context, symbol, orderID string) error
-	GetBalance(ctx context.Context, asset string) (float64, error)
-	GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error)
+	CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error, int)
+	CancelOrder(ctx context.Context, symbol, orderID string) (error, int)
+	GetBalance(ctx context.Context, asset string) (float64, error, int)
+	GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error, int)
 }
 
 type OrderBook struct {
@@ -31,8 +31,6 @@ const (
 	KuCoin  ExchangeType = "kucoin"
 	Bitpin  ExchangeType = "bitpin"
 )
-
-// Wallex  ExchangeType = "wallex"
 
 var registry = make(map[ExchangeType]Exchange)
 

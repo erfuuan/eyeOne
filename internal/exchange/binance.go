@@ -25,7 +25,7 @@ func NewBinanceExchange(apiKey, secretKey string) (Exchange, error) {
 	return &BinanceExchange{client: client, log: log}, nil
 }
 
-func (b *BinanceExchange) CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error) {
+func (b *BinanceExchange) CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error, int) {
 	order, err := b.client.NewCreateOrderService().
 		Symbol(symbol).
 		Side(binance.SideType(side)).
@@ -36,17 +36,17 @@ func (b *BinanceExchange) CreateOrder(ctx context.Context, symbol, side, orderTy
 		Do(ctx)
 	if err != nil {
 		b.log.Error("Failed to create order", zap.String("symbol", symbol), zap.Error(err))
-		return "", err
+		return "", err, 500
 	}
 	b.log.Info("Order created", zap.String("symbol", symbol), zap.Int64("orderId", order.OrderID))
-	return fmt.Sprintf("%d", order.OrderID), nil
+	return fmt.Sprintf("%d", order.OrderID), nil, 201
 }
 
-func (b *BinanceExchange) CancelOrder(ctx context.Context, symbol, orderID string) error {
+func (b *BinanceExchange) CancelOrder(ctx context.Context, symbol, orderID string) (error, int) {
 	id, err := strconv.ParseInt(orderID, 10, 64)
 	if err != nil {
 		b.log.Warn("Invalid order ID format", zap.String("orderId", orderID), zap.Error(err))
-		return err
+		return err, 500
 	}
 	_, err = b.client.NewCancelOrderService().
 		Symbol(symbol).
@@ -55,34 +55,34 @@ func (b *BinanceExchange) CancelOrder(ctx context.Context, symbol, orderID strin
 	if err != nil {
 		b.log.Error("Failed to cancel order", zap.String("symbol", symbol), zap.Int64("orderId", id), zap.Error(err))
 	}
-	return err
+	return err, 500
 }
 
-func (b *BinanceExchange) GetBalance(ctx context.Context, asset string) (float64, error) {
+func (b *BinanceExchange) GetBalance(ctx context.Context, asset string) (float64, error, int) {
 	account, err := b.client.NewGetAccountService().Do(ctx)
 	if err != nil {
 		b.log.Error("Failed to get account info", zap.Error(err))
-		return 0, err
+		return 0, err, 500
 	}
 	for _, balance := range account.Balances {
 		if balance.Asset == asset {
 			free, err := strconv.ParseFloat(balance.Free, 64)
 			if err != nil {
 				b.log.Error("Failed to parse balance", zap.String("asset", asset), zap.String("value", balance.Free), zap.Error(err))
-				return 0, err
+				return 0, err, 500
 			}
-			return free, nil
+			return free, nil, 200
 		}
 	}
 	b.log.Warn("Asset not found", zap.String("asset", asset))
-	return 0, fmt.Errorf("asset %s not found", asset)
+	return 0, fmt.Errorf("asset %s not found", asset), 404
 }
 
-func (b *BinanceExchange) GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error) {
+func (b *BinanceExchange) GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error, int) {
 	res, err := b.client.NewDepthService().Symbol(symbol).Do(ctx)
 	if err != nil {
 		b.log.Error("Failed to get order book", zap.String("symbol", symbol), zap.Error(err))
-		return models.OrderBook{}, fmt.Errorf("failed to get order book: %w", err)
+		return models.OrderBook{}, fmt.Errorf("failed to get order book: %w", err), 500
 	}
 
 	bids := make([]models.OrderBookEntry, 0, len(res.Bids))
@@ -90,12 +90,12 @@ func (b *BinanceExchange) GetOrderBook(ctx context.Context, symbol string) (mode
 		price, err := strconv.ParseFloat(bid.Price, 64)
 		if err != nil {
 			b.log.Error("Failed to parse bid price", zap.String("price", bid.Price), zap.Error(err))
-			return models.OrderBook{}, fmt.Errorf("failed to parse bid price: %w", err)
+			return models.OrderBook{}, fmt.Errorf("failed to parse bid price: %w", err), 500
 		}
 		quantity, err := strconv.ParseFloat(bid.Quantity, 64)
 		if err != nil {
 			b.log.Error("Failed to parse bid quantity", zap.String("quantity", bid.Quantity), zap.Error(err))
-			return models.OrderBook{}, fmt.Errorf("failed to parse bid quantity: %w", err)
+			return models.OrderBook{}, fmt.Errorf("failed to parse bid quantity: %w", err), 500
 		}
 		bids = append(bids, models.OrderBookEntry{
 			Price:    price,
@@ -108,12 +108,12 @@ func (b *BinanceExchange) GetOrderBook(ctx context.Context, symbol string) (mode
 		price, err := strconv.ParseFloat(ask.Price, 64)
 		if err != nil {
 			b.log.Error("Failed to parse ask price", zap.String("price", ask.Price), zap.Error(err))
-			return models.OrderBook{}, fmt.Errorf("failed to parse ask price: %w", err)
+			return models.OrderBook{}, fmt.Errorf("failed to parse ask price: %w", err), 500
 		}
 		quantity, err := strconv.ParseFloat(ask.Quantity, 64)
 		if err != nil {
 			b.log.Error("Failed to parse ask quantity", zap.String("quantity", ask.Quantity), zap.Error(err))
-			return models.OrderBook{}, fmt.Errorf("failed to parse ask quantity: %w", err)
+			return models.OrderBook{}, fmt.Errorf("failed to parse ask quantity: %w", err), 500
 		}
 		asks = append(asks, models.OrderBookEntry{
 			Price:    price,
@@ -125,5 +125,5 @@ func (b *BinanceExchange) GetOrderBook(ctx context.Context, symbol string) (mode
 	return models.OrderBook{
 		Bids: bids,
 		Asks: asks,
-	}, nil
+	}, nil, 200
 }

@@ -30,7 +30,7 @@ func NewKucoinExchange(apiKey, apiSecret, apiPassphrase string) (*KucoinExchange
 	return &KucoinExchange{client: client, log: log}, nil
 }
 
-func (k *KucoinExchange) CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error) {
+func (k *KucoinExchange) CreateOrder(ctx context.Context, symbol, side, orderType string, quantity, price float64) (string, error, int) {
 	clientOid := fmt.Sprintf("%s-%d", symbol, time.Now().UnixNano())
 
 	k.log.Info("Creating Kucoin order",
@@ -58,7 +58,7 @@ func (k *KucoinExchange) CreateOrder(ctx context.Context, symbol, side, orderTyp
 	order, err := k.client.CreateOrder(context.Background(), orderModel)
 	if err != nil {
 		k.log.Error("Failed to create order", zap.Error(err))
-		return "", fmt.Errorf("failed to create order: %v", err)
+		return "", fmt.Errorf("failed to create order: %v", err), 500
 	}
 
 	var orderResponse struct {
@@ -67,11 +67,11 @@ func (k *KucoinExchange) CreateOrder(ctx context.Context, symbol, side, orderTyp
 
 	if err := order.ReadData(&orderResponse); err != nil {
 		k.log.Error("Failed to read order response", zap.Error(err))
-		return "", fmt.Errorf("failed to read order response: %v", err)
+		return "", fmt.Errorf("failed to read order response: %v", err), 500
 	}
 
 	k.log.Info("Order created successfully", zap.String("orderOid", orderResponse.OrderOid))
-	return orderResponse.OrderOid, nil
+	return orderResponse.OrderOid, nil, 201
 }
 
 func (k *KucoinExchange) CancelOrder(ctx context.Context, symbol, orderID string) error {
@@ -90,19 +90,19 @@ func (k *KucoinExchange) CancelOrder(ctx context.Context, symbol, orderID string
 	return nil
 }
 
-func (k *KucoinExchange) GetBalance(ctx context.Context, asset string) (float64, error) {
+func (k *KucoinExchange) GetBalance(ctx context.Context, asset string) (float64, error, int) {
 	k.log.Info("Fetching Kucoin balance", zap.String("asset", asset))
 
 	rsp, err := k.client.Accounts(ctx, "", "")
 	if err != nil {
 		k.log.Error("Failed to fetch account balances", zap.Error(err))
-		return 0, fmt.Errorf("failed to fetch account balances: %w", err)
+		return 0, fmt.Errorf("failed to fetch account balances: %w", err), 500
 	}
 
 	var accounts []kucoin.AccountModel
 	if err := rsp.ReadData(&accounts); err != nil {
 		k.log.Error("Failed to parse account data", zap.Error(err))
-		return 0, fmt.Errorf("failed to parse account data: %w", err)
+		return 0, fmt.Errorf("failed to parse account data: %w", err), 500
 	}
 
 	for _, account := range accounts {
@@ -110,30 +110,30 @@ func (k *KucoinExchange) GetBalance(ctx context.Context, asset string) (float64,
 			balance, err := strconv.ParseFloat(account.Available, 64)
 			if err != nil {
 				k.log.Error("Failed to parse balance", zap.String("asset", asset), zap.Error(err))
-				return 0, fmt.Errorf("failed to parse balance for %s: %w", asset, err)
+				return 0, fmt.Errorf("failed to parse balance for %s: %w", asset, err), 500
 			}
 			k.log.Info("Balance fetched", zap.String("asset", asset), zap.Float64("balance", balance))
-			return balance, nil
+			return balance, nil, 200
 		}
 	}
 
 	k.log.Warn("Asset not found", zap.String("asset", asset))
-	return 0, fmt.Errorf("asset %s not found", asset)
+	return 0, fmt.Errorf("asset %s not found", asset), 500
 }
 
-func (k *KucoinExchange) GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error) {
+func (k *KucoinExchange) GetOrderBook(ctx context.Context, symbol string) (models.OrderBook, error, int) {
 	k.log.Info("Fetching Kucoin order book", zap.String("symbol", symbol))
 
 	rsp, err := k.client.AggregatedFullOrderBook(ctx, symbol)
 	if err != nil {
 		k.log.Error("Failed to fetch order book", zap.Error(err))
-		return models.OrderBook{}, fmt.Errorf("failed to fetch order book: %w", err)
+		return models.OrderBook{}, fmt.Errorf("failed to fetch order book: %w", err), 500
 	}
 
 	var kucoinOB kucoin.FullOrderBookModel
 	if err := rsp.ReadData(&kucoinOB); err != nil {
 		k.log.Error("Failed to parse order book", zap.Error(err))
-		return models.OrderBook{}, fmt.Errorf("failed to parse order book: %w", err)
+		return models.OrderBook{}, fmt.Errorf("failed to parse order book: %w", err), 500
 	}
 
 	k.log.Info("Order book fetched successfully", zap.Int("asksCount", len(kucoinOB.Asks)), zap.Int("bidsCount", len(kucoinOB.Bids)))
@@ -141,7 +141,7 @@ func (k *KucoinExchange) GetOrderBook(ctx context.Context, symbol string) (model
 	return models.OrderBook{
 		Asks: convertEntries(kucoinOB.Asks),
 		Bids: convertEntries(kucoinOB.Bids),
-	}, nil
+	}, nil, 200
 }
 
 func convertEntries(entries [][]string) []models.OrderBookEntry {

@@ -23,7 +23,6 @@ type Config struct {
 func LoadEnv() *Config {
 	logger := logger.GetLogger()
 
-	// Try loading .env file if it exists (only for local/dev use)
 	if err := godotenv.Load(); err != nil {
 		logger.Warn("No .env file found. Using system environment variables")
 	}
@@ -42,7 +41,6 @@ func LoadEnv() *Config {
 	return cfg
 }
 
-// getEnv returns the environment variable or a default value
 func getEnv(key, defaultVal string) string {
 	if val := os.Getenv(key); val != "" {
 		return val
@@ -50,7 +48,6 @@ func getEnv(key, defaultVal string) string {
 	return defaultVal
 }
 
-// mustGetEnv returns the environment variable or logs a fatal error if not found
 func mustGetEnv(key string, logger *zap.Logger) string {
 	val := os.Getenv(key)
 	if val == "" {

@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"go.uber.org/zap"
 
 	"eyeOne/pkg/logger"
 )
 
-// ========== Order Requests ==========
-
 type CreateOrderRequest struct {
-	Symbol    string  `json:"symbol" binding:"required"`    // e.g. BTCUSDT
-	Side      string  `json:"side" binding:"required"`      // buy / sell
-	OrderType string  `json:"orderType" binding:"required"` // market / limit
+	Symbol    string  `json:"symbol" binding:"required"`
+	Side      string  `json:"side" binding:"required"`
+	OrderType string  `json:"orderType" binding:"required"`
 	Quantity  float64 `json:"quantity" binding:"required"`
 	Price     float64 `json:"price" binding:"required"`
 }
@@ -35,26 +34,36 @@ type GetOrderBookRequest struct {
 	Limit  int    `json:"limit" binding:"omitempty"`
 }
 
-// ========== Validation ==========
-
 var (
 	validSymbolRegex = regexp.MustCompile(`^[A-Z0-9_]{6,20}$`)
 	validAssetRegex  = regexp.MustCompile(`^[A-Z0-9]{2,10}$`)
 )
 
-func ValidateSymbol(symbol string) error {
+func ValidateSymbol(symbol, exchange string) error {
 	log := logger.GetLogger()
 
 	if symbol == "" {
 		err := errors.New("symbol is required")
-		log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err))
+		log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err), zap.String("exchange", exchange))
 		return err
 	}
-	if !validSymbolRegex.MatchString(symbol) {
-		err := fmt.Errorf("symbol must be uppercase letters or digits, 6 to 20 characters (got: %s)", symbol)
-		log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err))
-		return err
+
+	switch strings.ToLower(exchange) {
+	case "bitpin":
+		bitpinRegex := regexp.MustCompile(`^[A-Z0-9]+_[A-Z0-9]+$`)
+		if !bitpinRegex.MatchString(symbol) {
+			err := fmt.Errorf("bitpin symbol format invalid: must be UPPERCASE_ASSET1_ASSET2 (got: %s)", symbol)
+			log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err), zap.String("exchange", exchange))
+			return err
+		}
+	default:
+		if !validSymbolRegex.MatchString(symbol) {
+			err := fmt.Errorf("symbol must be uppercase letters or digits, 6 to 20 characters (got: %s)", symbol)
+			log.Warn("Validation error", zap.String("field", "symbol"), zap.Error(err), zap.String("exchange", exchange))
+			return err
+		}
 	}
+
 	return nil
 }
 

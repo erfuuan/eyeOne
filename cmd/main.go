@@ -33,38 +33,33 @@ func main() {
 	cfg := config.LoadEnv()
 	router := gin.Default()
 
-	// Setup Exchanges
 	exchanges := make(map[exchange.ExchangeType]exchange.Exchange)
 
-	binance, err := exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey)
-	if err != nil {
-		logger.Fatal("Failed to initialize Binance", zap.Error(err))
-	}
-	kucoin, err := exchange.NewKucoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
-	if err != nil {
-		logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
-	}
+	//? need api_key
+	// binance, err := exchange.NewBinanceExchange(cfg.BinanceAPIKey, cfg.BinanceSecretKey)
+	// if err != nil {
+	// 	logger.Fatal("Failed to initialize Binance", zap.Error(err))
+	// }
+	// kucoin, err := exchange.NewKucoinExchange(cfg.KucoinAPIKey, cfg.KucoinSecretKey, cfg.KucoinPassphrase)
+	// if err != nil {
+	// 	logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
+	// }
 
 	client := httpclient.New(logger)
 	bitpin, err := exchange.NewBitpinExchange(client, logger, cfg)
-
-	// bitpin, err := exchange.NewBitpinExchange(cfg.BitpinAPIKey, cfg.BitpinSecretKey)
 	if err != nil {
-		logger.Fatal("Failed to initialize KuCoin", zap.Error(err))
+		logger.Fatal("Failed to initialize bitpin", zap.Error(err))
 	}
 
-	exchanges[exchange.Binance] = binance
-	exchanges[exchange.KuCoin] = kucoin
+	// exchanges[exchange.Binance] = binance
+	// exchanges[exchange.KuCoin] = kucoin
 	exchanges[exchange.Bitpin] = bitpin
 
-	// Setup service and handlers
 	tradingService := service.NewTradingService(exchanges)
 	h := handler.NewHandler(tradingService)
 
-	// Register routes
 	api.SetupRouter(router, h)
 
-	// Create HTTP server
 	server := &http.Server{
 		Addr:           ":" + cfg.Port,
 		Handler:        router,
@@ -73,7 +68,6 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	// Graceful shutdown handling
 	go func() {
 		logger.Info("Starting server", zap.String("port", cfg.Port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -81,13 +75,12 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shut down the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	logger.Info("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {

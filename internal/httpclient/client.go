@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -19,7 +20,7 @@ type Client struct {
 func New(logger *zap.Logger) *Client {
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 20 * time.Second,
 		},
 		logger: logger,
 	}
@@ -39,7 +40,7 @@ func (c *Client) Get(ctx context.Context, url string, headers map[string]string)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		c.logger.Error("GET request failed", zap.Error(err))
-		return nil, 0, err
+		return nil, resp.StatusCode, err
 	}
 	defer resp.Body.Close()
 
@@ -65,15 +66,15 @@ func (c *Client) PostJSON(ctx context.Context, url string, body interface{}, hea
 		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
 
 	resp, err := c.httpClient.Do(req)
+
 	if err != nil {
 		c.logger.Error("POST request failed", zap.Error(err))
-		return nil, 0, err
+		return nil, resp.StatusCode, err
 	}
 	defer resp.Body.Close()
 
@@ -81,6 +82,40 @@ func (c *Client) PostJSON(ctx context.Context, url string, body interface{}, hea
 	if err != nil {
 		c.logger.Error("failed to read response body", zap.Error(err))
 		return nil, resp.StatusCode, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, resp.StatusCode, errors.New(string(respBody))
+	}
+	return respBody, resp.StatusCode, nil
+}
+
+func (c *Client) Delete(ctx context.Context, url string, headers map[string]string) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		c.logger.Error("failed to create DELETE request", zap.Error(err))
+		return nil, 0, err
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.logger.Error("DELETE request failed", zap.Error(err))
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.logger.Error("failed to read DELETE response body", zap.Error(err))
+		return nil, resp.StatusCode, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return respBody, resp.StatusCode, errors.New(string(respBody))
 	}
 
 	return respBody, resp.StatusCode, nil
